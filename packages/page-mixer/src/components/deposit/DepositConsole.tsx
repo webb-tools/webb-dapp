@@ -133,18 +133,6 @@ export const DepositConsole: FC = () => {
           >
             Deposit
           </TriggerDeposit>
-
-          {/*          <CTxButton
-            disabled={isDisabled}
-            loading={loading}
-            method='deposit'
-            onInblock={handleSuccess}
-            params={params}
-            section='mixer'
-            size='large'
-          >
-            Deposit
-          </CTxButton>*/}
           <SubmitDeposit
             open={showDepositModal}
             onClose={() => {
