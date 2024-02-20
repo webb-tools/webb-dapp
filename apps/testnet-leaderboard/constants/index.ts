@@ -17,6 +17,7 @@ export const BADGE_ICON_RECORD = {
   [BadgeEnum.ACTIVE_VALIDATOR]: '🟢',
   [BadgeEnum.BUG_REPORTER]: '🔎',
   [BadgeEnum.WRITER]: '📝',
+  [BadgeEnum.RELAYER]: '📡',
 } as const satisfies { [key in BadgeEnum]: string };
 
 /** The second constant calculated in milliseconds. */

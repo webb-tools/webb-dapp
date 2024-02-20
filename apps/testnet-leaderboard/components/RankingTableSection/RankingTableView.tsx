@@ -94,12 +94,15 @@ type Props = LeaderboardSuccessResponseType['data'];
 const participantToRankingItem = (participant: ParticipantType, idx: number) =>
   ({
     rank: idx + 1,
-    // Pior the `stash` type address, if not available, use the first address
+    // For the `stash` type address, if not available, use the first address
     // in the `addresses` array
     address:
       participant.addresses.find((a) => a.type === 'stash')?.address ||
       participant.addresses[0].address,
-    badges: participant.badges,
+    // Exclude the relayer badge temporarily, until a database migration occurs
+    // to remove the relayer badges from the participants, as it is no longer
+    // relevant.
+    badges: participant.badges.filter((badge) => badge !== BadgeEnum.RELAYER),
     points: participant.points,
     sessions: participant.sessions,
     identity: participant.identity,

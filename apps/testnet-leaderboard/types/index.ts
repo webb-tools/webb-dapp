@@ -13,4 +13,5 @@ export enum BadgeEnum {
   ACTIVE_VALIDATOR = 'active_validator',
   BUG_REPORTER = 'bug_reporter',
   WRITER = 'writer',
+  RELAYER = 'relayer',
 }

@@ -23,19 +23,24 @@ const getBadgeName = (badge: string) => {
 const Badges = () => {
   return (
     <div className="flex flex-wrap justify-center gap-1">
-      {Object.entries(BADGE_ICON_RECORD).map(([badge, icon], idx) => {
-        const name = getBadgeName(badge) ?? badge;
-        const fmtName = name.split('_').map(capitalize).join(' ');
+      {Object.entries(BADGE_ICON_RECORD)
+        // Exclude the relayer badge temporarily, until a database migration occurs
+        // to remove the relayer badges from the participants, as it is no longer
+        // relevant.
+        .filter((badge) => badge[0] !== BadgeEnum.RELAYER)
+        .map(([badge, icon], idx) => {
+          const name = getBadgeName(badge) ?? badge;
+          const fmtName = name.split('_').map(capitalize).join(' ');
 
-        return (
-          <Badge
-            key={`${badge}-${idx}`}
-            icon={icon}
-            name={fmtName}
-            shorthand={capitalize(badge)}
-          />
-        );
-      })}
+          return (
+            <Badge
+              key={`${badge}-${idx}`}
+              icon={icon}
+              name={fmtName}
+              shorthand={capitalize(badge)}
+            />
+          );
+        })}
     </div>
   );
 };
