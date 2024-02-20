@@ -8,7 +8,6 @@ import { BadgeEnum } from '../../types';
 const BADGE_TO_NAME = {
   [BadgeEnum.CREATOR]: 'Content Creator',
   [BadgeEnum.GOVERNANCE]: 'Governance Guardian',
-  [BadgeEnum.SPECIALIST]: 'Tx Specialist',
 } as const satisfies Partial<{
   [key in BadgeEnum]: string;
 }>;

@@ -8,8 +8,6 @@ export enum BadgeEnum {
   DEVELOPER = 'developer',
   GOVERNANCE = 'governance',
   INNOVATOR = 'innovator',
-  RELAYER = 'relayer',
-  SPECIALIST = 'specialist',
   USER = 'user',
   VALIDATOR = 'validator',
   ACTIVE_VALIDATOR = 'active_validator',
