@@ -54,7 +54,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Stop (Staking.chill) nomination flow - https://github.com/webb-tools/webb-dapp/pull/1933
 - Withdraw Unbonded Token Flow - https://github.com/webb-tools/webb-dapp/pull/1944
 - Substrate wallet connection - https://github.com/webb-tools/webb-dapp/pull/1965
-- Payouts Table update & Payout Flow (Payout single and Payout All) supported for both EVM and Substrate wallets  - https://github.com/webb-tools/webb-dapp/pull/1966
+- Payouts Table update & Payout Flow (Payout single and Payout All) supported for both EVM and Substrate wallets - https://github.com/webb-tools/webb-dapp/pull/1966
 - Substrate wallet support for all staking flows (Nominate, Bond More, Unbond, Rebond, Withdraw, Stop Nomination, Update Payee, Update Nominations) - https://github.com/webb-tools/webb-dapp/pull/1997
 - Account page with total, transferrable, and locked balances, token transfer modal, vesting information, EVM & Substrate `vest` functionality, and useful links - https://github.com/webb-tools/webb-dapp/pull/2000
 
@@ -65,3 +65,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Fixed
 
 - Client side data fetching for Header Chips, Key Stats and Nominator Stats containers to address timeout issue when fetching data - https://github.com/webb-tools/webb-dapp/pull/1849
+
+## [0.0.1] - 2024-03-12
+
+### Added
+
+- Tangle Dapp initial release
