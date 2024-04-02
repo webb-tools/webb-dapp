@@ -1,8 +1,5 @@
 import { AccountId32 } from '@polkadot/types/interfaces';
-import {
-  PalletStakingValidatorPrefs,
-  SpStakingExposure,
-} from '@polkadot/types/lookup';
+import { SpStakingExposure } from '@polkadot/types/lookup';
 import { BN_ZERO } from '@polkadot/util';
 import { useCallback, useMemo } from 'react';
 
@@ -11,7 +8,7 @@ import usePolkadotApiRx from '../../hooks/usePolkadotApiRx';
 import { Validator } from '../../types';
 import { formatTokenBalance } from '../../utils/polkadot';
 import useCurrentEra from '../staking/useCurrentEra';
-import useValidatorsPrefs from '../staking/useValidatorsPrefs';
+import useValidatorPrefs from '../staking/useValidatorPrefs';
 import useValidatorIdentityNames from './useValidatorIdentityNames';
 
 export const useValidators = (
@@ -21,7 +18,7 @@ export const useValidators = (
   const { nativeTokenSymbol } = useNetworkStore();
   const { data: currentEra } = useCurrentEra();
   const { data: identityNames } = useValidatorIdentityNames();
-  const { data: validatorPrefs } = useValidatorsPrefs();
+  const { data: validatorPrefs } = useValidatorPrefs();
 
   const { data: exposures } = usePolkadotApiRx(
     useCallback(
@@ -49,19 +46,11 @@ export const useValidators = (
     }
 
     const mappedExposures = new Map<string, SpStakingExposure>();
-    const mappedValidatorPrefs = new Map<string, PalletStakingValidatorPrefs>();
 
     exposures.forEach(([storageKey, exposure]) => {
       const accountId = storageKey.args[1].toString();
 
       mappedExposures.set(accountId, exposure);
-    });
-
-    validatorPrefs.forEach((validatorPref) => {
-      mappedValidatorPrefs.set(
-        validatorPref[0].args[0].toString(),
-        validatorPref[1]
-      );
     });
 
     return addresses.map((address) => {
@@ -83,7 +72,7 @@ export const useValidators = (
         );
       });
 
-      const validatorPref = mappedValidatorPrefs.get(address.toString());
+      const validatorPref = validatorPrefs.get(address.toString());
       const commissionRate = validatorPref?.commission.unwrap().toNumber() ?? 0;
       const commission = commissionRate / 10_000_000;
 

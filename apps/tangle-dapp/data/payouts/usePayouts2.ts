@@ -1,18 +1,19 @@
 'use client';
 
 import { SpStakingExposure } from '@polkadot/types/lookup';
-import { useCallback, useEffect, useState } from 'react';
+import { BN } from '@polkadot/util';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 
 import useNetworkStore from '../../context/useNetworkStore';
 import usePolkadotApiRx from '../../hooks/usePolkadotApiRx';
 import useSubstrateAddress from '../../hooks/useSubstrateAddress';
 import { Payout } from '../../types';
+import calculateBnPercentage from '../../utils/calculateBnPercentage';
 import {
   formatTokenBalance,
   getPolkadotApiPromise,
-  getValidatorCommission,
-  getValidatorIdentity,
 } from '../../utils/polkadot';
+import useValidatorPrefs from '../staking/useValidatorPrefs';
 import useValidatorIdentityNames from '../ValidatorTables/useValidatorIdentityNames';
 import useEraTotalRewards from './useEraTotalRewards';
 import useLedgers from './useLedgers';
@@ -28,6 +29,10 @@ const usePayouts2 = () => {
   const { rpcEndpoint, nativeTokenSymbol } = useNetworkStore();
   const activeSubstrateAddress = useSubstrateAddress();
   const { data: ledgers } = useLedgers();
+  const { data: validatorPrefs } = useValidatorPrefs();
+  const { data: identities } = useValidatorIdentityNames();
+  const { data: eraTotalRewards } = useEraTotalRewards();
+  const [payouts, setPayouts] = useState<Payout[] | null>(null);
 
   const { data: erasRewardsPoints } = usePolkadotApiRx(
     useCallback((api) => api.query.staking.erasRewardPoints.entries(), [])
@@ -41,21 +46,11 @@ const usePayouts2 = () => {
     )
   );
 
-  const { data: identities } = useValidatorIdentityNames();
-  const { data: eraTotalRewards } = useEraTotalRewards();
-  const [payouts, setPayouts] = useState<Payout[] | null>(null);
   const nominations = nominators?.isSome ? nominators.unwrap().targets : null;
 
-  useEffect(() => {
-    if (
-      nominations === null ||
-      erasRewardsPoints === null ||
-      ledgers === null ||
-      identities === null ||
-      activeSubstrateAddress === null ||
-      eraTotalRewards === null
-    ) {
-      return;
+  const rewards = useMemo(() => {
+    if (nominations === null || erasRewardsPoints === null) {
+      return null;
     }
 
     const rewards: ValidatorReward[] = [];
@@ -81,6 +76,23 @@ const usePayouts2 = () => {
         });
       }
     }
+
+    return rewards;
+  }, [erasRewardsPoints, nominations]);
+
+  useEffect(() => {
+    if (
+      ledgers === null ||
+      identities === null ||
+      activeSubstrateAddress === null ||
+      eraTotalRewards === null ||
+      rewards === null ||
+      validatorPrefs === null
+    ) {
+      return;
+    }
+
+    console.debug('usePayouts2');
 
     const payoutsPromise = Promise.all(
       rewards.map(async (reward) => {
@@ -126,12 +138,9 @@ const usePayouts2 = () => {
             reward.validatorAddress
           );
 
-        const validatorTotalStake = eraStakers.total.unwrap();
+        const validatorTotalStake = eraStakers.total.toBn();
 
-        if (
-          Number(validatorTotalStake.toString()) === 0 ||
-          eraStakers.others.length === 0
-        ) {
+        if (validatorTotalStake.isZero() || eraStakers.others.length === 0) {
           return;
         }
 
@@ -139,7 +148,7 @@ const usePayouts2 = () => {
           (nominator) => nominator.who.toString() === activeSubstrateAddress
         );
 
-        if (!nominatorStakeInfo || nominatorStakeInfo.isEmpty) {
+        if (nominatorStakeInfo === undefined || nominatorStakeInfo.isEmpty) {
           return;
         }
 
@@ -149,47 +158,57 @@ const usePayouts2 = () => {
           return;
         }
 
-        const nominatorStakePercentage =
-          (Number(nominatorTotalStake.toString()) /
-            Number(validatorTotalStake.toString())) *
-          100;
+        const prefs = validatorPrefs.get(reward.validatorAddress);
 
-        const validatorCommissionPercentage = await getValidatorCommission(
-          rpcEndpoint,
-          reward.validatorAddress
+        // TODO: Wouldn't this constitute some sort of logic error? How did this validator get here if it has no prefs?
+        if (prefs === undefined) {
+          return;
+        }
+
+        // TODO: Shouldn't be getting this constant from chain? Why is it hardcoded, and what does it represent?
+        const COMMISSION_DIVISOR = new BN(10_000_000);
+
+        const validatorCommissionPercentage = calculateBnPercentage(
+          prefs.commission.toBn(),
+          COMMISSION_DIVISOR
         );
 
         const validatorCommission = validatorTotalReward.muln(
-          Number(validatorCommissionPercentage) / 100
+          validatorCommissionPercentage
+        );
+
+        const nominatorStakePercentage = calculateBnPercentage(
+          nominatorTotalStake,
+          validatorTotalStake
         );
 
         const distributableReward =
           validatorTotalReward.sub(validatorCommission);
 
         const nominatorTotalReward = distributableReward.muln(
-          nominatorStakePercentage / 100
+          nominatorStakePercentage
         );
+
+        // Default to the validator's address if no identity is set.
+        const validatorIdentityName =
+          identities.get(reward.validatorAddress) ?? reward.validatorAddress;
+
+        const validatorNominators = eraStakers.others.map((nominator) => {
+          const nominatorAddress = nominator.who.toString();
+
+          // Default to the nominator's address if no identity is set.
+          const nominatorIdentity =
+            identities.get(nominatorAddress) ?? nominatorAddress;
+
+          return {
+            address: nominatorAddress,
+            identity: nominatorIdentity,
+          };
+        });
 
         const nominatorTotalRewardFormatted = formatTokenBalance(
           nominatorTotalReward,
           nativeTokenSymbol
-        );
-
-        const validatorIdentityName =
-          identities.get(reward.validatorAddress) ?? null;
-
-        const validatorNominators = await Promise.all(
-          eraStakers.others.map(async (nominator) => {
-            const nominatorIdentity = await getValidatorIdentity(
-              rpcEndpoint,
-              nominator.who.toString()
-            );
-
-            return {
-              address: nominator.who.toString(),
-              identity: nominatorIdentity ?? '',
-            };
-          })
         );
 
         const validatorTotalRewardFormatted = formatTokenBalance(
@@ -202,26 +221,20 @@ const usePayouts2 = () => {
           nativeTokenSymbol
         );
 
-        if (
-          validatorTotalStakeFormatted &&
-          validatorTotalRewardFormatted &&
-          nominatorTotalRewardFormatted
-        ) {
-          const payout: Payout = {
-            era: reward.era,
-            validator: {
-              address: reward.validatorAddress,
-              identity: validatorIdentityName ?? '',
-            },
-            validatorTotalStake: validatorTotalStakeFormatted,
-            nominators: validatorNominators,
-            validatorTotalReward: validatorTotalRewardFormatted,
-            nominatorTotalReward: nominatorTotalRewardFormatted,
-            status: 'unclaimed',
-          };
+        const payout: Payout = {
+          era: reward.era,
+          validator: {
+            address: reward.validatorAddress,
+            identity: validatorIdentityName,
+          },
+          validatorTotalStake: validatorTotalStakeFormatted,
+          nominators: validatorNominators,
+          validatorTotalReward: validatorTotalRewardFormatted,
+          nominatorTotalReward: nominatorTotalRewardFormatted,
+          status: 'unclaimed',
+        };
 
-          return payout;
-        }
+        return payout;
       })
     );
 
@@ -232,7 +245,16 @@ const usePayouts2 = () => {
           .sort((a, b) => a.era - b.era)
       )
     );
-  });
+  }, [
+    activeSubstrateAddress,
+    eraTotalRewards,
+    identities,
+    ledgers,
+    nativeTokenSymbol,
+    rewards,
+    rpcEndpoint,
+    validatorPrefs,
+  ]);
 
   return payouts;
 };

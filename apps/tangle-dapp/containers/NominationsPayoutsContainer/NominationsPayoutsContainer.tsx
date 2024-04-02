@@ -17,6 +17,7 @@ import { type FC, useEffect, useMemo, useRef, useState } from 'react';
 import { DelegatorTable, PayoutTable, TableStatus } from '../../components';
 import useNominations from '../../data/NominationsPayouts/useNominations';
 import usePayouts from '../../data/NominationsPayouts/usePayouts';
+import usePayouts2 from '../../data/payouts/usePayouts2';
 import useIsFirstTimeNominator from '../../hooks/useIsFirstTimeNominator';
 import useLocalStorage, { LocalStorageKey } from '../../hooks/useLocalStorage';
 import useQueryParamKey from '../../hooks/useQueryParamKey';
@@ -80,7 +81,7 @@ const DelegationsPayoutsContainer: FC = () => {
 
   const { data: delegatorsData } = useNominations(substrateAddress);
   const { isFirstTimeNominator } = useIsFirstTimeNominator();
-  const { data: payoutsData } = usePayouts(substrateAddress);
+  const payoutsData = usePayouts2();
 
   const currentNominations = useMemo(() => {
     if (!delegatorsData?.delegators) {
@@ -102,7 +103,7 @@ const DelegationsPayoutsContainer: FC = () => {
 
   const fetchedPayouts = useMemo(() => {
     if (payoutsData !== null) {
-      return payoutsData.payouts;
+      return payoutsData;
     } else if (cachedPayouts) {
       return cachedPayouts[substrateAddress] ?? [];
     }
@@ -129,8 +130,8 @@ const DelegationsPayoutsContainer: FC = () => {
   useEffect(() => {
     if (updatedPayouts.length > 0) {
       setPayouts(updatedPayouts);
-    } else if (payoutsData && payoutsData.payouts) {
-      setPayouts(payoutsData.payouts);
+    } else if (payoutsData) {
+      setPayouts(payoutsData);
     }
   }, [payoutsData, updatedPayouts]);
 

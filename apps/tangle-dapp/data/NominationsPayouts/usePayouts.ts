@@ -64,6 +64,8 @@ export default function usePayouts(
           ? nominations.unwrap().targets
           : [];
 
+        console.debug('myNominations', myNominations);
+
         sub = apiSub.query.staking.erasRewardPoints
           .entries()
           .subscribe(async (points) => {
@@ -84,12 +86,16 @@ export default function usePayouts(
                 );
 
                 if (!era) {
+                  console.debug('stop: no era');
+
                   return;
                 }
 
                 const rewards = point[1].toHuman();
 
                 if (!rewards) {
+                  console.debug('stop: no rewards');
+
                   return;
                 }
 
@@ -142,6 +148,8 @@ export default function usePayouts(
                   );
 
                   if (claimedEras.includes(era)) {
+                    console.debug('stop: era claimed included');
+
                     return;
                   }
 
@@ -149,6 +157,8 @@ export default function usePayouts(
                     await apiPromise.query.staking.erasValidatorReward(era);
 
                   if (erasTotalReward.isNone) {
+                    console.debug('stop: no eras total reward');
+
                     return;
                   }
 
@@ -262,10 +272,32 @@ export default function usePayouts(
                                 nominatorTotalRewardFormatted,
                               status: 'unclaimed',
                             };
+                          } else {
+                            console.debug('stop: formatting');
                           }
+                        } else {
+                          console.debug(
+                            'stop: Number(nominatorTotalStake.toString()) > 0'
+                          );
                         }
+                      } else {
+                        console.debug(
+                          'stop: nominatorStakeInfo && !nominatorStakeInfo.isEmpty'
+                        );
                       }
+                    } else {
+                      console.debug(
+                        'stop: validatorTotalReward < Number(validatorTotalStake.toString()) > 0 && eraStaker.others.length > 0'
+                      );
+
+                      console.debug('validatorTotalStake', validatorTotalStake);
+                      console.debug('eraStaker others', eraStaker.others);
+
+                      // eslint-disable-next-line no-debugger
+                      // debugger;
                     }
+                  } else {
+                    console.debug('stop: validatorTotalReward < 0');
                   }
                 })
                 .filter(

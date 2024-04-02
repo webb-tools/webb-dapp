@@ -56,7 +56,10 @@ const useValidatorIdentityNames = () => {
     )
   );
 
-  const nameMap = useEntryMap(identityNames, (key) => key);
+  const nameMap = useEntryMap(
+    identityNames,
+    useCallback((key) => key, [])
+  );
 
   return { data: nameMap, ...other };
 };
