@@ -12,8 +12,7 @@ export enum LocalStorageKey {
   IDEAL_STAKE_PERCENTAGE = 'idealStakePercentage',
   VALIDATOR_COUNTS = 'validatorCounts',
   WAITING_COUNT = 'waitingCount',
-  Payouts = 'payouts',
-  Nominations = 'nominations',
+  NOMINATIONS = 'nominations',
   CUSTOM_RPC_ENDPOINT = 'customRpcEndpoint',
   WEBB_NETWORK_NAME = 'webbNetworkName',
   NATIVE_TOKEN_SYMBOL = 'nativeTokenSymbol',
@@ -50,9 +49,7 @@ export type LocalStorageValueOf<T extends LocalStorageKey> =
     ? { value1: number | null; value2: number | null }
     : T extends LocalStorageKey.WAITING_COUNT
     ? { value1: number | null }
-    : T extends LocalStorageKey.Payouts
-    ? PayoutsCache
-    : T extends LocalStorageKey.Nominations
+    : T extends LocalStorageKey.NOMINATIONS
     ? NominationsCache
     : T extends
         | LocalStorageKey.CUSTOM_RPC_ENDPOINT

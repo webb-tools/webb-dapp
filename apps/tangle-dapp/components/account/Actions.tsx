@@ -22,7 +22,7 @@ import { twMerge } from 'tailwind-merge';
 import TransferTxContainer from '../../containers/TransferTxContainer/TransferTxContainer';
 import useNetworkStore from '../../context/useNetworkStore';
 import useAirdropEligibility from '../../data/claims/useAirdropEligibility';
-import usePayoutsAvailability from '../../data/payouts/usePayoutsAvailability';
+import usePayouts from '../../data/payouts/usePayouts';
 import useVestingInfo from '../../data/vesting/useVestingInfo';
 import useVestTx from '../../data/vesting/useVestTx';
 import { TxStatus } from '../../hooks/useSubstrateTx';
@@ -31,11 +31,11 @@ import { formatTokenBalance } from '../../utils/polkadot';
 
 const Actions: FC = () => {
   const { nativeTokenSymbol } = useNetworkStore();
-
   const [isTransferModalOpen, setIsTransferModalOpen] = useState(false);
   const { execute: executeVestTx, status: vestTxStatus } = useVestTx();
   const { isEligible: isAirdropEligible } = useAirdropEligibility();
-  const isPayoutsAvailable = usePayoutsAvailability();
+  const payouts = usePayouts();
+  const isPayoutsAvailable = payouts !== null && payouts.length > 0;
 
   const {
     isVesting,

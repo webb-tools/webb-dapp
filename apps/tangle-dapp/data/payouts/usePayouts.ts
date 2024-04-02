@@ -21,7 +21,7 @@ type ValidatorReward = {
   validatorRewardPoints: number;
 };
 
-const usePayouts2 = () => {
+const usePayouts = () => {
   const { nativeTokenSymbol } = useNetworkStore();
   const activeSubstrateAddress = useSubstrateAddress();
   const { data: ledgers } = useLedgers();
@@ -263,7 +263,7 @@ const usePayouts2 = () => {
   ]);
 
   const processedPayouts = useMemo(() => {
-    if (payouts === null || payouts === undefined || !Array.isArray(payouts)) {
+    if (payouts === null) {
       return null;
     }
 
@@ -275,4 +275,4 @@ const usePayouts2 = () => {
   return processedPayouts;
 };
 
-export default usePayouts2;
+export default usePayouts;

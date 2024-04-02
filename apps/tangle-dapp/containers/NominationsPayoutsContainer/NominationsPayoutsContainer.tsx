@@ -15,7 +15,7 @@ import { type FC, useEffect, useMemo, useRef, useState } from 'react';
 
 import { DelegatorTable, PayoutTable, TableStatus } from '../../components';
 import useNominations from '../../data/NominationsPayouts/useNominations';
-import usePayouts2 from '../../data/payouts/usePayouts2';
+import usePayouts from '../../data/payouts/usePayouts';
 import useIsFirstTimeNominator from '../../hooks/useIsFirstTimeNominator';
 import useQueryParamKey from '../../hooks/useQueryParamKey';
 import useSubstrateAddress from '../../hooks/useSubstrateAddress';
@@ -69,7 +69,7 @@ const DelegationsPayoutsContainer: FC = () => {
 
   const { data: nominationsData } = useNominations(substrateAddress);
   const { isFirstTimeNominator } = useIsFirstTimeNominator();
-  const payouts = usePayouts2();
+  const payouts = usePayouts();
 
   const nominationAddresses = useMemo(() => {
     if (!nominationsData?.delegators) {
