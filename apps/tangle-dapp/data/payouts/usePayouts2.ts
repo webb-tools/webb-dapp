@@ -1,18 +1,14 @@
 'use client';
 
-import { SpStakingExposure } from '@polkadot/types/lookup';
-import { BN } from '@polkadot/util';
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { assert, BN } from '@polkadot/util';
+import { useCallback, useMemo } from 'react';
 
 import useNetworkStore from '../../context/useNetworkStore';
 import usePolkadotApiRx from '../../hooks/usePolkadotApiRx';
 import useSubstrateAddress from '../../hooks/useSubstrateAddress';
 import { Payout } from '../../types';
 import calculateBnPercentage from '../../utils/calculateBnPercentage';
-import {
-  formatTokenBalance,
-  getPolkadotApiPromise,
-} from '../../utils/polkadot';
+import { formatTokenBalance } from '../../utils/polkadot';
 import useValidatorPrefs from '../staking/useValidatorPrefs';
 import useValidatorIdentityNames from '../ValidatorTables/useValidatorIdentityNames';
 import useEraTotalRewards from './useEraTotalRewards';
@@ -26,13 +22,12 @@ type ValidatorReward = {
 };
 
 const usePayouts2 = () => {
-  const { rpcEndpoint, nativeTokenSymbol } = useNetworkStore();
+  const { nativeTokenSymbol } = useNetworkStore();
   const activeSubstrateAddress = useSubstrateAddress();
   const { data: ledgers } = useLedgers();
   const { data: validatorPrefs } = useValidatorPrefs();
   const { data: identities } = useValidatorIdentityNames();
   const { data: eraTotalRewards } = useEraTotalRewards();
-  const [payouts, setPayouts] = useState<Payout[] | null>(null);
 
   const { data: erasRewardsPoints } = usePolkadotApiRx(
     useCallback((api) => api.query.staking.erasRewardPoints.entries(), [])
@@ -80,183 +75,204 @@ const usePayouts2 = () => {
     return rewards;
   }, [erasRewardsPoints, nominations]);
 
-  useEffect(() => {
+  const { data: erasStakersAll } = usePolkadotApiRx(
+    useCallback(
+      (api) => {
+        if (rewards === null) {
+          return null;
+        }
+
+        const eras = rewards.map((reward) => reward.era);
+
+        return api.query.staking.erasStakers.multi(eras);
+      },
+      [rewards]
+    )
+  );
+
+  const payouts = useMemo(() => {
     if (
       ledgers === null ||
       identities === null ||
       activeSubstrateAddress === null ||
       eraTotalRewards === null ||
       rewards === null ||
-      validatorPrefs === null
+      validatorPrefs === null ||
+      erasStakersAll === null
     ) {
-      return;
+      return null;
     }
 
-    console.debug('usePayouts2');
+    assert(
+      rewards.length === erasStakersAll.length,
+      'Each reward should have a corresponding eras stakers entry'
+    );
 
-    const payoutsPromise = Promise.all(
-      rewards.map(async (reward) => {
-        const apiPromise = await getPolkadotApiPromise(rpcEndpoint);
-        const ledgerOpt = ledgers.get(reward.validatorAddress);
+    return rewards.map((reward, index) => {
+      console.debug('usePayouts2');
 
-        // There might not be a ledger for this validator.
-        if (ledgerOpt === undefined || ledgerOpt.isNone) {
-          return;
-        }
+      const ledgerOpt = ledgers.get(reward.validatorAddress);
 
-        const ledger = ledgerOpt.unwrap();
-        const claimedEras = ledger.claimedRewards.map((era) => era.toNumber());
+      // There might not be a ledger for this validator.
+      if (ledgerOpt === undefined || ledgerOpt.isNone) {
+        return;
+      }
 
-        // Validator has already claimed rewards for this era, so it
-        // is not relevant for the payouts.
-        if (claimedEras.includes(reward.era)) {
-          return;
-        }
+      const ledger = ledgerOpt.unwrap();
+      const claimedEras = ledger.claimedRewards.map((era) => era.toNumber());
 
-        const eraTotalRewardOpt = eraTotalRewards.get(reward.era);
+      // Validator has already claimed rewards for this era, so it
+      // is not relevant for the payouts.
+      if (claimedEras.includes(reward.era)) {
+        return;
+      }
 
-        // No rewards for this era.
-        if (eraTotalRewardOpt === undefined || eraTotalRewardOpt.isNone) {
-          return;
-        }
+      const eraTotalRewardOpt = eraTotalRewards.get(reward.era);
 
-        const eraTotalReward = eraTotalRewardOpt.unwrap();
+      // No rewards for this era.
+      if (eraTotalRewardOpt === undefined || eraTotalRewardOpt.isNone) {
+        return;
+      }
 
-        // validator's total reward = (era's total reward * validator's points) / era's total reward points
-        const validatorTotalReward = eraTotalReward
-          .muln(reward.validatorRewardPoints)
-          .divn(reward.eraTotalRewardPoints);
+      const eraTotalReward = eraTotalRewardOpt.unwrap();
 
-        // Validator had no rewards for this era.
-        if (validatorTotalReward.isZero()) {
-          return;
-        }
+      // validator's total reward = (era's total reward * validator's points) / era's total reward points
+      const validatorTotalReward = eraTotalReward
+        .muln(reward.validatorRewardPoints)
+        .divn(reward.eraTotalRewardPoints);
 
-        const eraStakers: SpStakingExposure =
-          await apiPromise.query.staking.erasStakers(
-            reward.era,
-            reward.validatorAddress
-          );
+      // Validator had no rewards for this era.
+      if (validatorTotalReward.isZero()) {
+        return;
+      }
 
-        const validatorTotalStake = eraStakers.total.toBn();
+      // Era stakers and rewards are linked by index.
+      const eraStakers = erasStakersAll.at(index);
 
-        if (validatorTotalStake.isZero() || eraStakers.others.length === 0) {
-          return;
-        }
+      assert(
+        eraStakers !== undefined,
+        'There should be an eras stakers entry for each reward'
+      );
 
-        const nominatorStakeInfo = eraStakers.others.find(
-          (nominator) => nominator.who.toString() === activeSubstrateAddress
-        );
+      const validatorTotalStake = eraStakers.total.toBn();
 
-        if (nominatorStakeInfo === undefined || nominatorStakeInfo.isEmpty) {
-          return;
-        }
+      if (validatorTotalStake.isZero() || eraStakers.others.length === 0) {
+        return;
+      }
 
-        const nominatorTotalStake = nominatorStakeInfo.value.unwrap();
+      const nominatorStakeInfo = eraStakers.others.find(
+        (nominator) => nominator.who.toString() === activeSubstrateAddress
+      );
 
-        if (nominatorTotalStake.isZero()) {
-          return;
-        }
+      if (nominatorStakeInfo === undefined || nominatorStakeInfo.isEmpty) {
+        return;
+      }
 
-        const prefs = validatorPrefs.get(reward.validatorAddress);
+      const nominatorTotalStake = nominatorStakeInfo.value.unwrap();
 
-        // TODO: Wouldn't this constitute some sort of logic error? How did this validator get here if it has no prefs?
-        if (prefs === undefined) {
-          return;
-        }
+      if (nominatorTotalStake.isZero()) {
+        return;
+      }
 
-        // TODO: Shouldn't be getting this constant from chain? Why is it hardcoded, and what does it represent?
-        const COMMISSION_DIVISOR = new BN(10_000_000);
+      const prefs = validatorPrefs.get(reward.validatorAddress);
 
-        const validatorCommissionPercentage = calculateBnPercentage(
-          prefs.commission.toBn(),
-          COMMISSION_DIVISOR
-        );
+      // TODO: Wouldn't this constitute some sort of logic error? How did this validator get here if it has no prefs?
+      if (prefs === undefined) {
+        return;
+      }
 
-        const validatorCommission = validatorTotalReward.muln(
-          validatorCommissionPercentage
-        );
+      // TODO: Shouldn't be getting this constant from chain? Why is it hardcoded, and what does it represent?
+      const COMMISSION_DIVISOR = new BN(10_000_000);
 
-        const nominatorStakePercentage = calculateBnPercentage(
-          nominatorTotalStake,
-          validatorTotalStake
-        );
+      const validatorCommissionPercentage = calculateBnPercentage(
+        prefs.commission.toBn(),
+        COMMISSION_DIVISOR
+      );
 
-        const distributableReward =
-          validatorTotalReward.sub(validatorCommission);
+      const validatorCommission = validatorTotalReward.muln(
+        validatorCommissionPercentage
+      );
 
-        const nominatorTotalReward = distributableReward.muln(
-          nominatorStakePercentage
-        );
+      const nominatorStakePercentage = calculateBnPercentage(
+        nominatorTotalStake,
+        validatorTotalStake
+      );
 
-        // Default to the validator's address if no identity is set.
-        const validatorIdentityName =
-          identities.get(reward.validatorAddress) ?? reward.validatorAddress;
+      const distributableReward = validatorTotalReward.sub(validatorCommission);
 
-        const validatorNominators = eraStakers.others.map((nominator) => {
-          const nominatorAddress = nominator.who.toString();
+      const nominatorTotalReward = distributableReward.muln(
+        nominatorStakePercentage
+      );
 
-          // Default to the nominator's address if no identity is set.
-          const nominatorIdentity =
-            identities.get(nominatorAddress) ?? nominatorAddress;
+      // Default to the validator's address if no identity is set.
+      const validatorIdentityName =
+        identities.get(reward.validatorAddress) ?? reward.validatorAddress;
 
-          return {
-            address: nominatorAddress,
-            identity: nominatorIdentity,
-          };
-        });
+      const validatorNominators = eraStakers.others.map((nominator) => {
+        const nominatorAddress = nominator.who.toString();
 
-        const nominatorTotalRewardFormatted = formatTokenBalance(
-          nominatorTotalReward,
-          nativeTokenSymbol
-        );
+        // Default to the nominator's address if no identity is set.
+        const nominatorIdentity =
+          identities.get(nominatorAddress) ?? nominatorAddress;
 
-        const validatorTotalRewardFormatted = formatTokenBalance(
-          validatorTotalReward,
-          nativeTokenSymbol
-        );
-
-        const validatorTotalStakeFormatted = formatTokenBalance(
-          validatorTotalStake,
-          nativeTokenSymbol
-        );
-
-        const payout: Payout = {
-          era: reward.era,
-          validator: {
-            address: reward.validatorAddress,
-            identity: validatorIdentityName,
-          },
-          validatorTotalStake: validatorTotalStakeFormatted,
-          nominators: validatorNominators,
-          validatorTotalReward: validatorTotalRewardFormatted,
-          nominatorTotalReward: nominatorTotalRewardFormatted,
-          status: 'unclaimed',
+        return {
+          address: nominatorAddress,
+          identity: nominatorIdentity,
         };
+      });
 
-        return payout;
-      })
-    );
+      const nominatorTotalRewardFormatted = formatTokenBalance(
+        nominatorTotalReward,
+        nativeTokenSymbol
+      );
 
-    payoutsPromise.then((payouts) =>
-      setPayouts(
-        payouts
-          .filter((payout): payout is Payout => payout !== undefined)
-          .sort((a, b) => a.era - b.era)
-      )
-    );
+      const validatorTotalRewardFormatted = formatTokenBalance(
+        validatorTotalReward,
+        nativeTokenSymbol
+      );
+
+      const validatorTotalStakeFormatted = formatTokenBalance(
+        validatorTotalStake,
+        nativeTokenSymbol
+      );
+
+      const payout: Payout = {
+        era: reward.era,
+        validator: {
+          address: reward.validatorAddress,
+          identity: validatorIdentityName,
+        },
+        validatorTotalStake: validatorTotalStakeFormatted,
+        nominators: validatorNominators,
+        validatorTotalReward: validatorTotalRewardFormatted,
+        nominatorTotalReward: nominatorTotalRewardFormatted,
+        status: 'unclaimed',
+      };
+
+      return payout;
+    });
   }, [
     activeSubstrateAddress,
     eraTotalRewards,
+    erasStakersAll,
     identities,
     ledgers,
     nativeTokenSymbol,
     rewards,
-    rpcEndpoint,
     validatorPrefs,
   ]);
 
-  return payouts;
+  const processedPayouts = useMemo(() => {
+    if (payouts === null || payouts === undefined || !Array.isArray(payouts)) {
+      return null;
+    }
+
+    return payouts
+      .filter((payout): payout is Payout => payout !== undefined)
+      .sort((a, b) => a.era - b.era);
+  }, [payouts]);
+
+  return processedPayouts;
 };
 
 export default usePayouts2;

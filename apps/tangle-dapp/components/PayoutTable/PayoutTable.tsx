@@ -28,12 +28,9 @@ import { PayoutTableProps } from './types';
 
 const columnHelper = createColumnHelper<Payout>();
 
-const PayoutTable: FC<PayoutTableProps> = ({
-  data = [],
-  pageSize,
-  updateData,
-}) => {
+const PayoutTable: FC<PayoutTableProps> = ({ data = [], pageSize }) => {
   const [isModalOpen, setIsModalOpen] = useState(false);
+
   const [payoutTxProps, setPayoutTxProps] = useState<{
     validatorAddress: string;
     era: string;
@@ -187,8 +184,6 @@ const PayoutTable: FC<PayoutTableProps> = ({
         isModalOpen={isModalOpen}
         setIsModalOpen={setIsModalOpen}
         payoutTxProps={payoutTxProps}
-        payouts={data}
-        updatePayouts={updateData}
       />
     </>
   );

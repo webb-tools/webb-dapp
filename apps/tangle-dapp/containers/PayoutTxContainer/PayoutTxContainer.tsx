@@ -25,8 +25,6 @@ const PayoutTxContainer: FC<PayoutTxContainerProps> = ({
   isModalOpen,
   setIsModalOpen,
   payoutTxProps,
-  payouts,
-  updatePayouts,
 }) => {
   const { activeAccount } = useWebContext();
   const { validatorAddress, era } = payoutTxProps;
@@ -67,16 +65,6 @@ const PayoutTxContainer: FC<PayoutTxContainerProps> = ({
         'Failed to payout stakers!'
       );
 
-      const updatedPayouts = payouts.filter(
-        (payout) =>
-          !(
-            payout.era === Number(era) &&
-            payout.validator.address === validatorAddress
-          )
-      );
-
-      updatePayouts(updatedPayouts);
-
       setTxConfirmationState({
         isOpen: true,
         status: 'success',
@@ -97,10 +85,8 @@ const PayoutTxContainer: FC<PayoutTxContainerProps> = ({
     closeModal,
     era,
     executeTx,
-    payouts,
     rpcEndpoint,
     setTxConfirmationState,
-    updatePayouts,
     validatorAddress,
     walletAddress,
   ]);
