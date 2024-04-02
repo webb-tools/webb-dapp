@@ -155,11 +155,13 @@ const usePayouts = () => {
       // TODO: The type system is reporting this as could never be undefined, but it CAN be. This likely means that the Substrate types are outdated. This is a temporary fix.
       const claimedRewards = ledger.claimedRewards ?? [];
 
-      const claimedEras = claimedRewards.map((era) => era.toNumber());
+      const eraWasClaimed = claimedRewards.some(
+        (era) => era.toNumber() === exposureAndRewards.era
+      );
 
       // Validator has already claimed rewards for this era, so it
       // is not relevant for the payouts.
-      if (claimedEras.includes(exposureAndRewards.era)) {
+      if (eraWasClaimed) {
         return;
       }
 
