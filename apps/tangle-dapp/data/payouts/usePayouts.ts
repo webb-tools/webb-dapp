@@ -98,7 +98,7 @@ const usePayouts = () => {
             return exposure.map((exposure, index) => ({
               era: rewards[index].era,
               total: exposure.total,
-              others: exposure.others,
+              nominators: exposure.others,
               validatorAddress: rewards[index].validatorAddress,
               validatorRewardPoints: rewards[index].validatorRewardPoints,
               eraTotalRewardPoints: rewards[index].eraTotalRewardPoints,
@@ -123,6 +123,26 @@ const usePayouts = () => {
     }
 
     return exposuresAndRewards.map((exposureAndRewards) => {
+      // No nominators for this validator in this era. Skip it.
+      if (exposureAndRewards.nominators.length === 0) {
+        return;
+      }
+
+      const ourStakeInfo = exposureAndRewards.nominators.find(
+        (nominator) => nominator.who.toString() === activeSubstrateAddress
+      );
+
+      // If this validator is not staked by the current user, skip it.
+      if (ourStakeInfo === undefined || ourStakeInfo.isEmpty) {
+        return;
+      }
+
+      const validatorTotalStake = exposureAndRewards.total.toBn();
+
+      if (validatorTotalStake.isZero()) {
+        return;
+      }
+
       const ledgerOpt = ledgers.get(exposureAndRewards.validatorAddress);
 
       // There might not be a ledger for this validator.
@@ -162,30 +182,7 @@ const usePayouts = () => {
         return;
       }
 
-      const validatorTotalStake = exposureAndRewards.total.toBn();
-
-      if (
-        validatorTotalStake.isZero() ||
-        exposureAndRewards.others.length === 0
-      ) {
-        console.debug(
-          'validatorTotalStake.isZero() || eraStakers.others.length === 0',
-          validatorTotalStake.toString(),
-          exposureAndRewards.others.length
-        );
-
-        return;
-      }
-
-      const nominatorStakeInfo = exposureAndRewards.others.find(
-        (nominator) => nominator.who.toString() === activeSubstrateAddress
-      );
-
-      if (nominatorStakeInfo === undefined || nominatorStakeInfo.isEmpty) {
-        return;
-      }
-
-      const nominatorTotalStake = nominatorStakeInfo.value.unwrap();
+      const nominatorTotalStake = ourStakeInfo.value.unwrap();
 
       if (nominatorTotalStake.isZero()) {
         return;
@@ -226,18 +223,20 @@ const usePayouts = () => {
         identities.get(exposureAndRewards.validatorAddress) ??
         exposureAndRewards.validatorAddress;
 
-      const validatorNominators = exposureAndRewards.others.map((nominator) => {
-        const nominatorAddress = nominator.who.toString();
+      const validatorNominators = exposureAndRewards.nominators.map(
+        (nominator) => {
+          const nominatorAddress = nominator.who.toString();
 
-        // Default to the nominator's address if no identity is set.
-        const nominatorIdentity =
-          identities.get(nominatorAddress) ?? nominatorAddress;
+          // Default to the nominator's address if no identity is set.
+          const nominatorIdentity =
+            identities.get(nominatorAddress) ?? nominatorAddress;
 
-        return {
-          address: nominatorAddress,
-          identity: nominatorIdentity,
-        };
-      });
+          return {
+            address: nominatorAddress,
+            identity: nominatorIdentity,
+          };
+        }
+      );
 
       const payout: Payout = {
         era: exposureAndRewards.era,
