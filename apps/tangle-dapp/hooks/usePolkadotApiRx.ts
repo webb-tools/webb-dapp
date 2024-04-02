@@ -78,7 +78,10 @@ function usePolkadotApiRx<T>(factory: ObservableFactory<T>) {
     const subscription = observable
       .pipe(
         catchError((possibleError: unknown) => {
-          setError(ensureError(possibleError));
+          const error = ensureError(possibleError);
+
+          console.error(possibleError);
+          setError(error);
           setLoading(false);
 
           // By returning an empty observable, the subscription will be

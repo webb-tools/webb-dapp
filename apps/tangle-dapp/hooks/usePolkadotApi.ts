@@ -96,7 +96,10 @@ function usePolkadotApi<T>(
     console.debug(`SWR: Refreshing data for '${swrKey ?? '<no key>'}'`);
 
     return fetcher(polkadotApi).catch((possibleError: unknown) => {
-      setError(ensureError(possibleError));
+      const error = ensureError(possibleError);
+
+      console.error(possibleError);
+      setError(error);
 
       return null;
     });

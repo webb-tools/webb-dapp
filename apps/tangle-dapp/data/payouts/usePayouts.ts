@@ -29,6 +29,7 @@ const usePayouts = () => {
   const { data: identities } = useValidatorIdentityNames();
   const { data: eraTotalRewards } = useEraTotalRewards();
 
+  // TODO: One way to significantly optimize this hook: Have a dropdown button allowing the user to select how many eras they want to see payouts for. By default, have this be set to something reasonable such as 2. Max should be equal to `constants.maxHistoryDepth` from the chain. Currently, it defaults to all eras, which is quite expensive and takes time!
   const { data: erasRewardsPoints } = usePolkadotApiRx(
     useCallback((api) => api.query.staking.erasRewardPoints.entries(), [])
   );
@@ -41,9 +42,10 @@ const usePayouts = () => {
     )
   );
 
-  const nominations = nominators?.isSome ? nominators.unwrap().targets : null;
-
   const rewards = useMemo(() => {
+    const nominations =
+      nominators?.isSome === true ? nominators.unwrap().targets : null;
+
     if (nominations === null || erasRewardsPoints === null) {
       return null;
     }
@@ -55,8 +57,12 @@ const usePayouts = () => {
         const era = point[0].args[0].toNumber();
         const rewardsForEra = point[1];
 
-        const validatorRewardPoints =
-          rewardsForEra.individual.get(validatorAddress);
+        // TODO: It's already given as a BTreeMap, but the key is `AccountId32`, and `string` can't be used as a key (it returns undefined!). Need to take advantage of the tree structure and stop processing the tree into an array, which is more expensive.
+        const entry = Array.from(rewardsForEra.individual.entries()).find(
+          ([key]) => key.toString() === validatorAddress.toString()
+        );
+
+        const validatorRewardPoints = entry?.[1];
 
         // No entry for this validator in this era.
         if (validatorRewardPoints === undefined) {
@@ -73,7 +79,7 @@ const usePayouts = () => {
     }
 
     return rewards;
-  }, [erasRewardsPoints, nominations]);
+  }, [erasRewardsPoints, nominators]);
 
   const { data: erasStakersAll } = usePolkadotApiRx(
     useCallback(
@@ -82,7 +88,7 @@ const usePayouts = () => {
           return null;
         }
 
-        const eras = rewards.map((reward) => reward.era);
+        const eras = rewards.map((reward) => [new BN(reward.era), null]);
 
         return api.query.staking.erasStakers.multi(eras);
       },
@@ -100,6 +106,18 @@ const usePayouts = () => {
       validatorPrefs === null ||
       erasStakersAll === null
     ) {
+      console.debug(
+        'not ready yet: ',
+        ledgers === null,
+        identities === null,
+        activeSubstrateAddress === null,
+        eraTotalRewards === null,
+        rewards === null,
+        validatorPrefs === null,
+        erasStakersAll === null,
+        rewards === null
+      );
+
       return null;
     }
 
@@ -109,7 +127,7 @@ const usePayouts = () => {
     );
 
     return rewards.map((reward, index) => {
-      console.debug('usePayouts2');
+      console.debug('usePayouts2: REWARD ITER');
 
       const ledgerOpt = ledgers.get(reward.validatorAddress);
 
@@ -119,7 +137,11 @@ const usePayouts = () => {
       }
 
       const ledger = ledgerOpt.unwrap();
-      const claimedEras = ledger.claimedRewards.map((era) => era.toNumber());
+
+      // TODO: The type system is reporting this as could never be undefined, but it CAN be. This likely means that the Substrate types are outdated. This is a temporary fix.
+      const claimedRewards = ledger.claimedRewards ?? [];
+
+      const claimedEras = claimedRewards.map((era) => era.toNumber());
 
       // Validator has already claimed rewards for this era, so it
       // is not relevant for the payouts.
@@ -271,6 +293,8 @@ const usePayouts = () => {
       .filter((payout): payout is Payout => payout !== undefined)
       .sort((a, b) => a.era - b.era);
   }, [payouts]);
+
+  console.debug('usePayouts3: ', processedPayouts);
 
   return processedPayouts;
 };
