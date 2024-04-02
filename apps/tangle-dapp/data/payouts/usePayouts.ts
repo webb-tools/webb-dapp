@@ -1,7 +1,8 @@
 'use client';
 
-import { assert, BN } from '@polkadot/util';
+import { BN } from '@polkadot/util';
 import { useCallback, useMemo } from 'react';
+import { map } from 'rxjs';
 
 import useNetworkStore from '../../context/useNetworkStore';
 import usePolkadotApiRx from '../../hooks/usePolkadotApiRx';
@@ -81,16 +82,29 @@ const usePayouts = () => {
     return rewards;
   }, [erasRewardsPoints, nominators]);
 
-  const { data: erasStakersAll } = usePolkadotApiRx(
+  const { data: exposuresAndRewards } = usePolkadotApiRx(
     useCallback(
       (api) => {
         if (rewards === null) {
           return null;
         }
 
-        const eras = rewards.map((reward) => [new BN(reward.era), null]);
+        // Get all exposures for all eras, without specifying the validator
+        // (that will cause it to return all exposures for all validators in each era).
+        const eras = rewards.map((reward) => [reward.era, null]);
 
-        return api.query.staking.erasStakers.multi(eras);
+        return api.query.staking.erasStakers.multi(eras).pipe(
+          map((exposure) => {
+            return exposure.map((exposure, index) => ({
+              era: rewards[index].era,
+              total: exposure.total,
+              others: exposure.others,
+              validatorAddress: rewards[index].validatorAddress,
+              validatorRewardPoints: rewards[index].validatorRewardPoints,
+              eraTotalRewardPoints: rewards[index].eraTotalRewardPoints,
+            }));
+          })
+        );
       },
       [rewards]
     )
@@ -102,34 +116,14 @@ const usePayouts = () => {
       identities === null ||
       activeSubstrateAddress === null ||
       eraTotalRewards === null ||
-      rewards === null ||
       validatorPrefs === null ||
-      erasStakersAll === null
+      exposuresAndRewards === null
     ) {
-      console.debug(
-        'not ready yet: ',
-        ledgers === null,
-        identities === null,
-        activeSubstrateAddress === null,
-        eraTotalRewards === null,
-        rewards === null,
-        validatorPrefs === null,
-        erasStakersAll === null,
-        rewards === null
-      );
-
       return null;
     }
 
-    assert(
-      rewards.length === erasStakersAll.length,
-      'Each reward should have a corresponding eras stakers entry'
-    );
-
-    return rewards.map((reward, index) => {
-      console.debug('usePayouts2: REWARD ITER');
-
-      const ledgerOpt = ledgers.get(reward.validatorAddress);
+    return exposuresAndRewards.map((exposureAndRewards) => {
+      const ledgerOpt = ledgers.get(exposureAndRewards.validatorAddress);
 
       // There might not be a ledger for this validator.
       if (ledgerOpt === undefined || ledgerOpt.isNone) {
@@ -145,11 +139,11 @@ const usePayouts = () => {
 
       // Validator has already claimed rewards for this era, so it
       // is not relevant for the payouts.
-      if (claimedEras.includes(reward.era)) {
+      if (claimedEras.includes(exposureAndRewards.era)) {
         return;
       }
 
-      const eraTotalRewardOpt = eraTotalRewards.get(reward.era);
+      const eraTotalRewardOpt = eraTotalRewards.get(exposureAndRewards.era);
 
       // No rewards for this era.
       if (eraTotalRewardOpt === undefined || eraTotalRewardOpt.isNone) {
@@ -160,29 +154,30 @@ const usePayouts = () => {
 
       // validator's total reward = (era's total reward * validator's points) / era's total reward points
       const validatorTotalReward = eraTotalReward
-        .muln(reward.validatorRewardPoints)
-        .divn(reward.eraTotalRewardPoints);
+        .muln(exposureAndRewards.validatorRewardPoints)
+        .divn(exposureAndRewards.eraTotalRewardPoints);
 
       // Validator had no rewards for this era.
       if (validatorTotalReward.isZero()) {
         return;
       }
 
-      // Era stakers and rewards are linked by index.
-      const eraStakers = erasStakersAll.at(index);
+      const validatorTotalStake = exposureAndRewards.total.toBn();
 
-      assert(
-        eraStakers !== undefined,
-        'There should be an eras stakers entry for each reward'
-      );
+      if (
+        validatorTotalStake.isZero() ||
+        exposureAndRewards.others.length === 0
+      ) {
+        console.debug(
+          'validatorTotalStake.isZero() || eraStakers.others.length === 0',
+          validatorTotalStake.toString(),
+          exposureAndRewards.others.length
+        );
 
-      const validatorTotalStake = eraStakers.total.toBn();
-
-      if (validatorTotalStake.isZero() || eraStakers.others.length === 0) {
         return;
       }
 
-      const nominatorStakeInfo = eraStakers.others.find(
+      const nominatorStakeInfo = exposureAndRewards.others.find(
         (nominator) => nominator.who.toString() === activeSubstrateAddress
       );
 
@@ -196,7 +191,7 @@ const usePayouts = () => {
         return;
       }
 
-      const prefs = validatorPrefs.get(reward.validatorAddress);
+      const prefs = validatorPrefs.get(exposureAndRewards.validatorAddress);
 
       // TODO: Wouldn't this constitute some sort of logic error? How did this validator get here if it has no prefs?
       if (prefs === undefined) {
@@ -228,9 +223,10 @@ const usePayouts = () => {
 
       // Default to the validator's address if no identity is set.
       const validatorIdentityName =
-        identities.get(reward.validatorAddress) ?? reward.validatorAddress;
+        identities.get(exposureAndRewards.validatorAddress) ??
+        exposureAndRewards.validatorAddress;
 
-      const validatorNominators = eraStakers.others.map((nominator) => {
+      const validatorNominators = exposureAndRewards.others.map((nominator) => {
         const nominatorAddress = nominator.who.toString();
 
         // Default to the nominator's address if no identity is set.
@@ -243,32 +239,26 @@ const usePayouts = () => {
         };
       });
 
-      const nominatorTotalRewardFormatted = formatTokenBalance(
-        nominatorTotalReward,
-        nativeTokenSymbol
-      );
-
-      const validatorTotalRewardFormatted = formatTokenBalance(
-        validatorTotalReward,
-        nativeTokenSymbol
-      );
-
-      const validatorTotalStakeFormatted = formatTokenBalance(
-        validatorTotalStake,
-        nativeTokenSymbol
-      );
-
       const payout: Payout = {
-        era: reward.era,
+        era: exposureAndRewards.era,
+        nominators: validatorNominators,
+        status: 'unclaimed',
         validator: {
-          address: reward.validatorAddress,
+          address: exposureAndRewards.validatorAddress,
           identity: validatorIdentityName,
         },
-        validatorTotalStake: validatorTotalStakeFormatted,
-        nominators: validatorNominators,
-        validatorTotalReward: validatorTotalRewardFormatted,
-        nominatorTotalReward: nominatorTotalRewardFormatted,
-        status: 'unclaimed',
+        validatorTotalStake: formatTokenBalance(
+          validatorTotalStake,
+          nativeTokenSymbol
+        ),
+        validatorTotalReward: formatTokenBalance(
+          validatorTotalReward,
+          nativeTokenSymbol
+        ),
+        nominatorTotalReward: formatTokenBalance(
+          nominatorTotalReward,
+          nativeTokenSymbol
+        ),
       };
 
       return payout;
@@ -276,11 +266,10 @@ const usePayouts = () => {
   }, [
     activeSubstrateAddress,
     eraTotalRewards,
-    erasStakersAll,
+    exposuresAndRewards,
     identities,
     ledgers,
     nativeTokenSymbol,
-    rewards,
     validatorPrefs,
   ]);
 
@@ -293,8 +282,6 @@ const usePayouts = () => {
       .filter((payout): payout is Payout => payout !== undefined)
       .sort((a, b) => a.era - b.era);
   }, [payouts]);
-
-  console.debug('usePayouts3: ', processedPayouts);
 
   return processedPayouts;
 };
