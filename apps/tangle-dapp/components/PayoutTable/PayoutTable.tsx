@@ -58,7 +58,7 @@ const PayoutTable: FC<PayoutTableProps> = ({ data = [], pageSize }) => {
 
           return (
             <div
-              className="flex space-x-1 items-center justify-start"
+              className="flex items-center justify-start space-x-1"
               key={`${props.row.original.era}-${address}`}
             >
               <Avatar sourceVariant="address" value={address} theme="substrate">
@@ -172,7 +172,6 @@ const PayoutTable: FC<PayoutTableProps> = ({ data = [], pageSize }) => {
       <div className="overflow-hidden border rounded-lg bg-mono-0 dark:bg-mono-180 border-mono-40 dark:border-mono-160">
         <Table
           thClassName="border-t-0 bg-mono-0"
-          trClassName="cursor-pointer"
           paginationClassName="bg-mono-0 dark:bg-mono-180 pl-6"
           tableProps={table}
           isPaginated

@@ -1,3 +1,4 @@
+import { isAppEnvironmentType } from '@webb-tools/dapp-config/types';
 import {
   AppsLine,
   DocumentationIcon,
@@ -21,7 +22,9 @@ import {
 
 import { PagePath } from '../../types';
 
-const sideBarStaticItems: SideBarItemProps[] = [
+// TODO: This entire system of handling sidebar props can be improved in a more React-compliant manner. For now, leaving as is since it is not necessary.
+// Only show the services dropdown if on development mode.
+const SIDEBAR_STATIC_ITEMS: SideBarItemProps[] = [
   {
     name: 'Account',
     href: PagePath.ACCOUNT,
@@ -36,6 +39,7 @@ const sideBarStaticItems: SideBarItemProps[] = [
     isInternal: true,
     isNext: true,
     Icon: GridFillIcon,
+    environments: ['development', 'staging', 'test'],
     subItems: [
       {
         name: 'Overview',
@@ -69,7 +73,7 @@ const sideBarStaticItems: SideBarItemProps[] = [
   },
 ];
 
-const sideBarFooter: SideBarFooterType = {
+const SIDEBAR_FOOTER: SideBarFooterType = {
   Icon: DocumentationIcon,
   href: TANGLE_DOCS_URL,
   isInternal: false,
@@ -77,12 +81,16 @@ const sideBarFooter: SideBarFooterType = {
   useNextThemesForThemeToggle: true,
 };
 
-export default function getSideBarProps(
+export default function getSidebarProps(
   substratePortalHref?: string,
   evmExplorerHref?: string
 ): SidebarProps {
+  const currentEnv = isAppEnvironmentType(process.env.NODE_ENV)
+    ? process.env.NODE_ENV
+    : 'development';
+
   const sideBarItems: SideBarItemProps[] = [
-    ...sideBarStaticItems,
+    ...SIDEBAR_STATIC_ITEMS,
     ...(substratePortalHref
       ? [
           {
@@ -107,11 +115,19 @@ export default function getSideBarProps(
       : []),
   ];
 
+  // Filter the sidebar items based on the current environment
+  const items = sideBarItems.filter((item) => {
+    if (!item.environments) {
+      return true;
+    }
+    return item.environments.includes(currentEnv);
+  });
+
   return {
     ClosedLogo: SidebarTangleClosedIcon,
     Logo: TangleLogo,
-    footer: sideBarFooter,
-    items: sideBarItems,
+    footer: SIDEBAR_FOOTER,
+    items,
     logoLink: TANGLE_MKT_URL,
   } satisfies SidebarProps;
 }

@@ -69,7 +69,7 @@ const NominatorStatsContainer: FC = () => {
           )}
         >
           <NominatorStatsItem
-            title={`Available ${nativeTokenSymbol} in Wallet`}
+            title={`Free Balance`}
             type="Wallet Balance"
             address={walletAddress}
           />
@@ -108,7 +108,7 @@ const NominatorStatsContainer: FC = () => {
           <div className="grid grid-cols-2 gap-2">
             <NominatorStatsItem
               title={`Total Staked ${nativeTokenSymbol}`}
-              tooltip={`Total Staked ${nativeTokenSymbol} (bonded).`}
+              tooltip={`The total amount of tokens you have bonded for nominating.`}
               type="Total Staked"
               address={substrateAddress}
             />
@@ -120,49 +120,36 @@ const NominatorStatsContainer: FC = () => {
 
           <div className="grid grid-cols-2 gap-2">
             {!isFirstTimeNominator ? (
-              <div className="flex items-center gap-2 flex-wrap">
-                <Button
-                  variant="utility"
-                  className="!min-w-[100px]"
-                  isDisabled={!activeAccount}
-                  onClick={() => setIsBondMoreModalOpen(true)}
-                >
-                  Add Stake
-                </Button>
-
-                <Button
-                  variant="utility"
-                  className="!min-w-[100px]"
-                  isDisabled={!activeAccount}
-                  onClick={() => setIsUnbondModalOpen(true)}
-                >
-                  Unbond
-                </Button>
-              </div>
-            ) : (
-              <div className="flex items-center gap-2">
-                <Link href={WEBB_TANGLE_DOCS_STAKING_URL} target="_blank">
-                  <Button variant="utility" className="!min-w-[150px]">
-                    Learn More
-                  </Button>
-                </Link>
-
-                <Link href={SOCIAL_URLS_RECORD.discord} target="_blank">
-                  <Button variant="utility" className="!min-w-[150px]">
-                    Join Community
-                  </Button>
-                </Link>
-              </div>
-            )}
-
-            {isFirstTimeNominator === false &&
-              !isFirstTimeNominatorLoading &&
-              !isFirstTimeNominatorError && (
+              <>
                 <div className="flex items-center gap-2 flex-wrap">
                   <Button
                     variant="utility"
                     className="!min-w-[100px]"
                     isDisabled={!activeAccount}
+                    onClick={() => setIsBondMoreModalOpen(true)}
+                  >
+                    Add Stake
+                  </Button>
+
+                  <Button
+                    variant="utility"
+                    className="!min-w-[100px]"
+                    isDisabled={!activeAccount}
+                    onClick={() => setIsUnbondModalOpen(true)}
+                  >
+                    Unbond
+                  </Button>
+                </div>
+
+                <div className="flex items-center gap-2 flex-wrap">
+                  <Button
+                    variant="utility"
+                    className="!min-w-[100px]"
+                    isDisabled={
+                      !activeAccount ||
+                      isFirstTimeNominatorLoading ||
+                      isFirstTimeNominatorError
+                    }
                     onClick={() => setIsRebondModalOpen(true)}
                   >
                     Rebond
@@ -171,13 +158,28 @@ const NominatorStatsContainer: FC = () => {
                   <Button
                     variant="utility"
                     className="!min-w-[100px]"
-                    isDisabled={!activeAccount}
+                    isDisabled={
+                      !activeAccount ||
+                      isFirstTimeNominatorLoading ||
+                      isFirstTimeNominatorError
+                    }
                     onClick={() => setIsWithdrawUnbondedModalOpen(true)}
                   >
                     Withdraw
                   </Button>
                 </div>
-              )}
+              </>
+            ) : (
+              <div className="flex items-center gap-2">
+                <Link href={WEBB_TANGLE_DOCS_STAKING_URL} target="_blank">
+                  <Button variant="utility">Learn More</Button>
+                </Link>
+
+                <Link href={SOCIAL_URLS_RECORD.discord} target="_blank">
+                  <Button variant="utility">Join Community</Button>
+                </Link>
+              </div>
+            )}
           </div>
         </div>
       </div>

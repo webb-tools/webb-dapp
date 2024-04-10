@@ -13,10 +13,11 @@ import {
 } from '@webb-tools/webb-ui-components';
 import { type FC, useEffect, useMemo, useRef, useState } from 'react';
 
-import { DelegatorTable, PayoutTable, TableStatus } from '../../components';
+import { DelegatorTable, TableStatus } from '../../components';
 import useNominations from '../../data/NominationsPayouts/useNominations';
-import usePayouts from '../../data/payouts/usePayouts';
+import usePayouts from '../../data/NominationsPayouts/usePayouts';
 import useIsFirstTimeNominator from '../../hooks/useIsFirstTimeNominator';
+import useNetworkState from '../../hooks/useNetworkState';
 import useQueryParamKey from '../../hooks/useQueryParamKey';
 import useSubstrateAddress from '../../hooks/useSubstrateAddress';
 import { DelegationsAndPayoutsTab, QueryParamKey } from '../../types';
@@ -46,6 +47,8 @@ const DelegationsPayoutsContainer: FC = () => {
   const [isDelegateModalOpen, setIsDelegateModalOpen] = useState(false);
   const [isPayoutAllModalOpen, setIsPayoutAllModalOpen] = useState(false);
   const [isUpdatePayeeModalOpen, setIsUpdatePayeeModalOpen] = useState(false);
+
+  const { network } = useNetworkState();
 
   const { value: queryParamsTab } = useQueryParamKey(
     QueryParamKey.DELEGATIONS_AND_PAYOUTS_TAB
@@ -178,7 +181,7 @@ const DelegationsPayoutsContainer: FC = () => {
 
         {/* Payouts Table */}
         <TabContent value={DelegationsAndPayoutsTab.PAYOUTS} aria-disabled>
-          {!activeAccount ? (
+          {/* {!activeAccount ? (
             <TableStatus
               title="Wallet Not Connected"
               description="Connect your wallet to view and manage your staking details."
@@ -202,8 +205,24 @@ const DelegationsPayoutsContainer: FC = () => {
               icon="🔍"
             />
           ) : (
-            <PayoutTable data={payouts ?? []} pageSize={PAGE_SIZE} />
-          )}
+            <PayoutTable
+              data={fetchedPayouts ?? []}
+              pageSize={PAGE_SIZE}
+              updateData={setUpdatedPayouts}
+            />
+          )} */}
+
+          <TableStatus
+            title="Payouts Coming Soon"
+            description="The payouts feature for EVM and Substrate users is in development for direct access here. Meanwhile, Substrate users can view and manage payouts via Polkadot Apps.
+            "
+            buttonText="Polkadot Apps"
+            buttonProps={{
+              href: `https://polkadot.js.org/apps/?rpc=${network.wsRpcEndpoint}#/staking/payout`,
+              target: '_blank',
+            }}
+            icon="🚧"
+          />
         </TabContent>
       </TableAndChartTabs>
 

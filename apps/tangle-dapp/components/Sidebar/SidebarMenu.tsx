@@ -2,27 +2,28 @@
 
 import { SideBarMenu as SideBarMenuCmp } from '@webb-tools/webb-ui-components';
 import { usePathname } from 'next/navigation';
-import { FC } from 'react';
+import { FC, useMemo } from 'react';
 
 import useNetworkState from '../../hooks/useNetworkState';
-import getSideBarProps from './sideBarProps';
+import getSidebarProps from './sidebarProps';
 
-const SideBarMenu: FC = () => {
+const SidebarMenu: FC = () => {
   const pathname = usePathname();
   const { network } = useNetworkState();
 
-  const sideBarProps = getSideBarProps(
-    network?.polkadotExplorer,
-    network?.evmExplorer
+  const sidebarProps = useMemo(
+    () =>
+      getSidebarProps(network?.polkadotExplorerUrl, network?.evmExplorerUrl),
+    [network?.evmExplorerUrl, network?.polkadotExplorerUrl]
   );
 
   return (
     <SideBarMenuCmp
-      {...sideBarProps}
+      {...sidebarProps}
       pathnameOrHash={pathname}
       className="lg:hidden"
     />
   );
 };
 
-export default SideBarMenu;
+export default SidebarMenu;
