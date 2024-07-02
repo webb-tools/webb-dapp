@@ -80,3 +80,43 @@ export const TVS_TOOLTIP =
   "Total Value Staked (TVS) refers to the total value of assets that are currently staked for this network in fiat currency. Generally used as an indicator of a network's security and trustworthiness.";
 
 export const LIQUID_STAKING_TOKEN_PREFIX = 'tg';
+
+// These should be moved/managed in libs/webb-ui-components/src/constants/networks.ts and not here. This is just a temporary solution.
+type Network = {
+  name: string;
+  endpoint: string;
+  tokenSymbol: LiquidStakingToken;
+};
+
+export const LS_NETWORK_CONFIG: Record<LiquidStakingChain, Network> = {
+  [LiquidStakingChain.POLKADOT]: {
+    name: 'Polkadot',
+    endpoint: 'ws://127.0.0.1:30334',
+    tokenSymbol: LiquidStakingToken.DOT,
+  },
+  [LiquidStakingChain.PHALA]: {
+    name: 'Phala',
+    endpoint: '',
+    tokenSymbol: LiquidStakingToken.PHALA,
+  },
+  [LiquidStakingChain.MOONBEAM]: {
+    name: 'Moonbeam',
+    endpoint: '',
+    tokenSymbol: LiquidStakingToken.GLMR,
+  },
+  [LiquidStakingChain.ASTAR]: {
+    name: 'Astar',
+    endpoint: '',
+    tokenSymbol: LiquidStakingToken.ASTAR,
+  },
+  [LiquidStakingChain.MANTA]: {
+    name: 'Manta',
+    endpoint: '',
+    tokenSymbol: LiquidStakingToken.MANTA,
+  },
+  [LiquidStakingChain.TANGLE_RESTAKING_PARACHAIN]: {
+    name: 'Tangle Parachain',
+    endpoint: 'ws://127.0.0.1:59408',
+    tokenSymbol: LiquidStakingToken.TNT,
+  },
+};
