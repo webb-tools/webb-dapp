@@ -5,6 +5,7 @@ import {
 import { TANGLE_TOKEN_DECIMALS } from '@webb-tools/dapp-config';
 import { TANGLE_RESTAKING_PARACHAIN_LOCAL_DEV_NETWORK } from '@webb-tools/webb-ui-components/constants/networks';
 
+import { LiquidStakingToken } from '../types/liquidStaking';
 import { StaticAssetPath } from '.';
 
 export enum ParachainChainId {
@@ -14,15 +15,6 @@ export enum ParachainChainId {
   ASTAR = 'Astar',
   MANTA = 'Manta',
   TANGLE_RESTAKING_PARACHAIN = 'Tangle Parachain',
-}
-
-export enum LiquidStakingToken {
-  DOT = 'DOT',
-  GLMR = 'GLMR',
-  MANTA = 'MANTA',
-  ASTAR = 'ASTR',
-  PHALA = 'PHALA',
-  TNT = 'TNT',
 }
 
 // TODO: Temporary manual override until the Parachain types are updated.
@@ -62,7 +54,7 @@ const POLKADOT: ParachainChainDef = {
 const PHALA: ParachainChainDef = {
   id: ParachainChainId.PHALA,
   name: 'Phala',
-  token: LiquidStakingToken.PHALA,
+  token: LiquidStakingToken.PHA,
   logo: StaticAssetPath.LIQUID_STAKING_TOKEN_PHALA,
   networkName: 'Phala',
   currency: 'Pha',
@@ -85,7 +77,7 @@ const MOONBEAM: ParachainChainDef = {
 const ASTAR: ParachainChainDef = {
   id: ParachainChainId.ASTAR,
   name: 'Astar',
-  token: LiquidStakingToken.ASTAR,
+  token: LiquidStakingToken.ASTR,
   logo: StaticAssetPath.LIQUID_STAKING_TOKEN_ASTAR,
   networkName: 'Astar',
   // TODO: No currency entry for ASTAR in the Tangle Primitives?
